@@ -47,36 +47,6 @@ proc genInitialBlock(): NimNode =
     )
   )
 
-proc genIncMemory(): NimNode =
-  newNimNode(nnkCommand).add(
-    newIdentNode("inc"),
-    newNimNode(nnkBracketExpr).add(
-      newNimNode(nnkDotExpr).add(
-        newIdentNode("core"),
-        newIdentNode("memory")
-      ),
-      newNimNode(nnkDotExpr).add(
-        newIdentNode("core"),
-        newIdentNode("ap")
-      )
-    )
-  )
-
-proc genDecMemory(): NimNode =
-  newNimNode(nnkCommand).add(
-    newIdentNode("dec"),
-    newNimNode(nnkBracketExpr).add(
-      newNimNode(nnkDotExpr).add(
-        newIdentNode("core"),
-        newIdentNode("memory")
-      ),
-      newNimNode(nnkDotExpr).add(
-        newIdentNode("core"),
-        newIdentNode("ap")
-      )
-    )
-  )
-
 proc genPrintMemory(): (NimNode, NimNode) =
   result = (
     nnkCommand.newTree(
@@ -104,25 +74,6 @@ proc genPrintMemory(): (NimNode, NimNode) =
         newIdentNode("flushFile")
       )
     )
-  )
-
-
-proc genIncAP(): NimNode =
-  newNimNode(nnkCommand).add(
-    newIdentNode("inc"),
-    newNimNode(nnkDotExpr).add(
-        newIdentNode("core"),
-        newIdentNode("ap")
-      )
-  )
-
-proc genDecAP(): NimNode =
-  newNimNode(nnkCommand).add(
-    newIdentNode("dec"),
-    newNimNode(nnkDotExpr).add(
-        newIdentNode("core"),
-        newIdentNode("ap")
-      )
   )
 
 proc genApAdjust(amount: int): NimNode =
@@ -192,12 +143,13 @@ proc charToSymbol(c: char): BFSymbol =
   else:   BFSymbol(kind: bfsNoOp)
 
 macro compile*(prog: string): untyped =
-  result = newStmtList()
-  var blockStack = @[genInitialBlock()]
+  var
+    blockStack = @[genInitialBlock()]
+    blockCount: int = 1
 
-  let instructions = toSeq(prog.strVal.items)
-  let symbols = map(instructions, proc(x: char): BFSymbol = charToSymbol(x))
-  var blockCount: int = 1
+  let
+    instructions = toSeq(prog.strVal.items)
+    symbols = map(instructions, proc(x: char): BFSymbol = charToSymbol(x))
 
   for sym in symbols:
     case sym.kind
@@ -223,7 +175,7 @@ macro compile*(prog: string): untyped =
     of bfsNoOp: discard
     else: discard
 
-  result.add(blockStack[0])
+  result = newStmtList().add(blockStack[0])
   #echo result.treeRepr
 
 # +[>+[.]]
