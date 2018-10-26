@@ -5,24 +5,23 @@ import strformat
 import tables
 import common
 
-template doWhile(lbl: untyped, a: typed, b: untyped): untyped =
+template doWhile(a: typed, b: untyped): untyped =
   while true:
     b
     if not a:
-      break lbl
+      break
 
-template loopBlock(lbl: untyped, a: typed, b: untyped): untyped =
-  block lbl:
-    if a != 0.uint8:
-      doWhile(lbl, a != 0.uint8):
-        b
+template loopBlock(a: typed, b: untyped): untyped =
+  if a != 0.uint8:
+    doWhile(a != 0.uint8):
+      b
 
 proc `<-`(a, b: NimNode) =
   case a.kind
   of nnkBlockStmt:
     a[1].add(b)
   of nnkCall:
-    a[3].add(b)
+    a[2].add(b)
   else:
     echo "wtf"
 
@@ -101,10 +100,8 @@ proc genMemAdjust(amount: int): NimNode =
   )
 
 proc genBlock(id: int): NimNode =
-  let blockIdent = newIdentNode("b" & $(id))
-  result = nnkCall.newTree(
+  nnkCall.newTree(
     newIdentNode("loopBlock"),
-    blockIdent,
     nnkBracketExpr.newTree(
       nnkDotExpr.newTree(
         newIdentNode("core"),
