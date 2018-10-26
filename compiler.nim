@@ -37,11 +37,6 @@ proc genInitialBlock(): NimNode =
           nnkCall.newTree(
             newIdentNode("BFCore")
           )
-        ),
-        nnkIdentDefs.newTree(
-          newIdentNode("register"),
-          newIdentNode("int"),
-          newEmptyNode()
         )
       )
     )
@@ -78,29 +73,30 @@ proc genApAdjust(amount: int): NimNode =
     newLit(amount)
   )
 
+proc intToU8(a: int): int =
+  if a > 255:
+    result = (a mod 256)
+  elif a < 0:
+    result = (256 + a)
+  else:
+    result = a
 
-proc genMemAdjust(amount: int): (NimNode, NimNode) =
-  result = (
-    nnkAsgn.newTree(
-      newIdentNode("register"),
-      newLit(amount)
-    ),
-    nnkInfix.newTree(
-      newIdentNode("+="),
-      nnkBracketExpr.newTree(
-        nnkDotExpr.newTree(
-          newIdentNode("core"),
-          newIdentNode("memory")
-        ),
-        nnkDotExpr.newTree(
-          newIdentNode("core"),
-          newIdentNode("ap")
-        )
+proc genMemAdjust(amount: int): NimNode =
+  nnkInfix.newTree(
+    newIdentNode("+="),
+    nnkBracketExpr.newTree(
+      nnkDotExpr.newTree(
+        newIdentNode("core"),
+        newIdentNode("memory")
       ),
       nnkDotExpr.newTree(
-        newIdentNode("register"),
-        newIdentNode("uint8")
+        newIdentNode("core"),
+        newIdentNode("ap")
       )
+    ),
+    nnkDotExpr.newTree(
+      newIntLitNode(amount.intToU8()),
+      newIdentNode("uint8")
     )
   )
 
@@ -162,8 +158,7 @@ macro compile*(prog: string): untyped =
     of bfsApAdjust:
       blockStack[^1] <- genApAdjust(sym.amt)
     of bfsMemAdjust:
-      let (regAsn, memAdj) = genMemAdjust(sym.amt)
-      blockStack[^1] <- regAsn
+      let memAdj = genMemAdjust(sym.amt)
       blockStack[^1] <- memAdj
     of bfsPrint:
       let print = genPrintMemory()
@@ -184,20 +179,20 @@ macro compile*(prog: string): untyped =
   #echo result.treeRepr
 
 # +[>+[.]]
-dumpAstGen:
+#dumpAstGen:
 #dumpTree:
-  block bfProg:
-    var
-      core = BFCore()
-      register: int
-    inc core.memory[core.ap]
-    loopBlock(b1, core.memory[core.ap]):
-      core.ap += 1
-      register = 1
-      core.memory[core.ap] += register.uint8
-      loopBlock(b2, core.memory[core.ap]):
-        stdout.write core.memory[core.ap].char
-        stdout.flushFile()
+#  block bfProg:
+#    var
+#      core = BFCore()
+#      register: int
+#    inc core.memory[core.ap]
+#    loopBlock(b1, core.memory[core.ap]):
+#      core.ap += 1
+#      register = 1
+#      core.memory[core.ap] += register.uint8
+#      loopBlock(b2, core.memory[core.ap]):
+#        stdout.write core.memory[core.ap].char
+#        stdout.flushFile()
 
 when isMainModule:
   #compile("++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.")
