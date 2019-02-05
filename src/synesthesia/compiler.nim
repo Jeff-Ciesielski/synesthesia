@@ -5,13 +5,13 @@ import strformat
 import tables
 import common
 
-template doWhile(a: typed, b: untyped): untyped =
+template doWhile*(a: typed, b: untyped): untyped =
   while true:
     b
     if not a:
       break
 
-template loopBlock(a: typed, b: untyped): untyped =
+template loopBlock*(a: typed, b: untyped): untyped =
   if a != 0.uint8:
     doWhile(a != 0.uint8):
       b
