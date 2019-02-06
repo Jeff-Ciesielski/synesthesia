@@ -10,6 +10,7 @@ type
     bfsRead,
     bfsBlock,
     bfsBlockEnd,
+    bfsMemZero,
     bfsNoOp
 
   BFSymbol* = object of RootObj

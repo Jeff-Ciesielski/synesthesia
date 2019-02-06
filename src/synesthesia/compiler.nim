@@ -62,6 +62,22 @@ proc genPrintMemory(): NimNode =
       )
     )
 
+proc genMemZero(): NimNode =
+  nnkInfix.newTree(
+    newIdentNode("="),
+    nnkBracketExpr.newTree(
+      nnkDotExpr.newTree(
+        newIdentNode("core"),
+        newIdentNode("memory")
+      ),
+      nnkDotExpr.newTree(
+        newIdentNode("core"),
+        newIdentNode("ap")
+      )
+    ),
+    newIntLitNode(0)
+  )
+
 proc genApAdjust(amount: int): NimNode =
   nnkInfix.newTree(
     newIdentNode("+="),
@@ -127,7 +143,12 @@ proc charToSymbol(c: char): BFSymbol =
   of ']': BFSymbol(kind: bfsBlockEnd)
   else:   BFSymbol(kind: bfsNoOp)
 
+## Our first simple optimization is the coalescing of adjacent memory
+## and pointer adjustments.  e.g. +++++ is actually +5, so we can
+## execute a single +5 instruction rather than five +1 instructions
+## (same goes for memory adjustments > and <)
 proc coalesceAdjustments(symbols: seq[BFSymbol]): seq[BFSymbol] =
+  echo "Coalescing memory adjustments"
   result = @[]
 
   result &= symbols[0]
@@ -141,6 +162,27 @@ proc coalesceAdjustments(symbols: seq[BFSymbol]): seq[BFSymbol] =
         result &= sym
     else: result &= sym
 
+## Our next optimizaiton is the generation of 'MemZero' commands. The
+## pattern `[-]` is very common in BF programming, and essentially
+## means loop on the current memory location until it reaches zero,
+## and then continue.  We can skip all those nasty branches with a simple set
+proc generateMemZeroes(symbols: seq[BFSymbol]): seq[BFSymbol] =
+  echo "Optimizing memory zero-sets"
+  result = @[]
+  var
+    i = 0
+
+  while i < symbols.len - 2:
+    let scratch = symbols[i..i+2]
+    if (scratch[0].kind == bfsBlock and
+        (scratch[1].kind == bfsMemAdjust and scratch[1].amt == -1) and
+        scratch[2].kind == bfsBlockEnd):
+      result &= BFSymbol(kind: bfsMemZero)
+      i += 3
+    else:
+      result &= symbols[i]
+      inc i
+
 macro compile*(fileName: string): untyped =
   var
     blockStack = @[genInitialBlock()]
@@ -150,17 +192,17 @@ macro compile*(fileName: string): untyped =
     instructions = toSeq(program.items)
     symbols = map(instructions, proc(x: char): BFSymbol = charToSymbol(x))
     coalesced = coalesceAdjustments(symbols)
+    withMemZero = generateMemZeroes(coalesced)
 
-  for sym in coalesced:
+  echo "generating nim AST"
+  for sym in withMemZero:
     case sym.kind
     of bfsApAdjust:
       blockStack[^1] <- genApAdjust(sym.amt)
     of bfsMemAdjust:
-      let memAdj = genMemAdjust(sym.amt)
-      blockStack[^1] <- memAdj
+      blockStack[^1] <- genMemAdjust(sym.amt)
     of bfsPrint:
-      let print = genPrintMemory()
-      blockStack[^1] <- print
+      blockStack[^1] <- genPrintMemory()
     of bfsRead:
       echo "read memory"
     of bfsBlock:
@@ -170,6 +212,8 @@ macro compile*(fileName: string): untyped =
       inc blockCount
     of bfsBlockEnd:
       blockStack = blockStack[0.. ^2]
+    of bfsMemZEro:
+      blockstack[^1] <- genMemZero()
     of bfsNoOp: discard
     else: discard
 
@@ -192,6 +236,3 @@ macro compile*(fileName: string): untyped =
 #      loopBlock(b2, core.memory[core.ap]):
 #        stdout.write core.memory[core.ap].char
 #        stdout.flushFile()
-
-when isMainModule:
-  compile("mendelbrot.bf")
