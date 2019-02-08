@@ -22,7 +22,7 @@ proc interpret*(bf: BFCore, program: string) =
   bf.pc = 0
   bf.ap = 0
   for cell in bf.memory.mitems:
-    cell = 0.uint8
+    cell = 0
 
   while bf.pc <= program.high:
     case program[bf.pc]
@@ -36,12 +36,12 @@ proc interpret*(bf: BFCore, program: string) =
     of ',':
       var tempMem: array[1, char]
       discard stdin.readChars(tempMem, 0, 1)
-      bf.memory[bf.ap] = tempMem[0].uint8
+      bf.memory[bf.ap] = tempMem[0].int
     of '[':
-      if bf.memory[bf.ap] == 0.uint8:
+      if bf.memory[bf.ap] == 0:
         bf.pc = jumpTbl[bf.pc]
     of ']':
-      if bf.memory[bf.ap] != 0.uint8:
+      if bf.memory[bf.ap] != 0:
         bf.pc = jumpTbl[bf.pc]
     else: discard
     inc bf.pc

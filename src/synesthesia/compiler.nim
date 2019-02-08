@@ -12,18 +12,9 @@ template doWhile*(a: typed, b: untyped): untyped =
       break
 
 template loopBlock*(a: typed, b: untyped): untyped =
-  if a != 0.uint8:
-    doWhile(a != 0.uint8):
+  if a != 0:
+    doWhile(a != 0):
       b
-
-proc intToU8(a: int): int =
-  if a > 255:
-    result = (a mod 256)
-  elif a < 0:
-    result = (256 + a)
-  else:
-    result = a
-
 
 proc `<-`(a, b: NimNode) =
   case a.kind
@@ -117,10 +108,7 @@ proc genMul(x, y: int): NimNode =
             newIdentNode("ap")
           )
         ),
-        nnkDotExpr.newTree(
-          newIntLitNode(y.intToU8()),
-          newIdentNode("uint8")
-        )
+        newIntLitNode(y)
       )
     )
   )
@@ -149,10 +137,7 @@ proc genMemAdjust(amount: int): NimNode =
         newIdentNode("ap")
       )
     ),
-    nnkDotExpr.newTree(
-      newIntLitNode(amount.intToU8()),
-      newIdentNode("uint8")
-    )
+    newIntLitNode(amount),
   )
 
 proc genBlock(id: int): NimNode =
