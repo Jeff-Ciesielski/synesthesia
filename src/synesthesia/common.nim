@@ -11,6 +11,7 @@ type
     bfsBlock,
     bfsBlockEnd,
     bfsMemZero,
+    bfsMul,
     bfsNoOp
 
   BFSymbol* = object of RootObj
@@ -19,4 +20,7 @@ type
       amt*: int
     of bfsBlock:
       statements*: seq[BFSymbol]
+    of bfsMul:
+      x*: int
+      y*: int
     else: discard

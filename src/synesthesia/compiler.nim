@@ -16,6 +16,15 @@ template loopBlock*(a: typed, b: untyped): untyped =
     doWhile(a != 0.uint8):
       b
 
+proc intToU8(a: int): int =
+  if a > 255:
+    result = (a mod 256)
+  elif a < 0:
+    result = (256 + a)
+  else:
+    result = a
+
+
 proc `<-`(a, b: NimNode) =
   case a.kind
   of nnkBlockStmt:
@@ -78,6 +87,44 @@ proc genMemZero(): NimNode =
     newIntLitNode(0)
   )
 
+proc genMul(x, y: int): NimNode =
+  nnkStmtList.newTree(
+    nnkInfix.newTree(
+      newIdentNode("+="),
+      nnkBracketExpr.newTree(
+        nnkDotExpr.newTree(
+          newIdentNode("core"),
+          newIdentNode("memory")
+        ),
+        nnkInfix.newTree(
+          newIdentNode("+"),
+          nnkDotExpr.newTree(
+            newIdentNode("core"),
+            newIdentNode("ap")
+          ),
+          newIntLitNode(x)
+        )
+      ),
+      nnkInfix.newTree(
+        newIdentNode("*"),
+        nnkBracketExpr.newTree(
+          nnkDotExpr.newTree(
+            newIdentNode("core"),
+            newIdentNode("memory")
+          ),
+          nnkDotExpr.newTree(
+            newIdentNode("core"),
+            newIdentNode("ap")
+          )
+        ),
+        nnkDotExpr.newTree(
+          newIntLitNode(y.intToU8()),
+          newIdentNode("uint8")
+        )
+      )
+    )
+  )
+
 proc genApAdjust(amount: int): NimNode =
   nnkInfix.newTree(
     newIdentNode("+="),
@@ -88,13 +135,6 @@ proc genApAdjust(amount: int): NimNode =
     newLit(amount)
   )
 
-proc intToU8(a: int): int =
-  if a > 255:
-    result = (a mod 256)
-  elif a < 0:
-    result = (256 + a)
-  else:
-    result = a
 
 proc genMemAdjust(amount: int): NimNode =
   nnkInfix.newTree(
@@ -169,16 +209,66 @@ proc coalesceAdjustments(symbols: seq[BFSymbol]): seq[BFSymbol] =
 proc generateMemZeroes(symbols: seq[BFSymbol]): seq[BFSymbol] =
   echo "Optimizing memory zero-sets"
   result = @[]
-  var
-    i = 0
+  var i = 0
 
-  while i < symbols.len - 2:
-    let scratch = symbols[i..i+2]
-    if (scratch[0].kind == bfsBlock and
-        (scratch[1].kind == bfsMemAdjust and scratch[1].amt == -1) and
-        scratch[2].kind == bfsBlockEnd):
+  while i < symbols.len:
+    if (i < symbols.high and symbols[i].kind == bfsBlock and
+        (symbols[i+1].kind == bfsMemAdjust and symbols[i+1].amt == -1) and
+        symbols[i+2].kind == bfsBlockEnd):
       result &= BFSymbol(kind: bfsMemZero)
       i += 3
+    else:
+      result &= symbols[i]
+      inc i
+
+## Condenses multiplication loops into multiplication instructions
+## i.e. [->+++>+++<<] becomes two multiplications: Mul 1,3 and Mul 2,3
+proc generateMulLoops(symbols: seq[BFSymbol]): seq[BFSymbol] =
+  echo "Optimizing Multiply Loops"
+  result = @[]
+  var
+    i = 0
+    j = 0
+    inLoop = false
+    totalOffset = 0
+    mulStk: seq[BFSymbol] = @[]
+
+  while i < symbols.len:
+    if (i < symbols.high and symbols[i].kind == bfsBlock and
+        (symbols[i+1].kind == bfsMemAdjust and symbols[i+1].amt == -1)):
+      totalOffset = 0
+      mulStk = @[]
+      j = i
+      i += 2
+      inLoop = false
+      while true:
+        let
+          s1 = symbols[i]
+          s2 = symbols[i+1]
+        if ((s1.kind == bfsApAdjust) and
+            (s2.kind == bfsMemAdjust)):
+          let y = s2.amt
+
+          totalOffset += s1.amt
+
+
+          mulStk &= BFSymbol(kind:bfsMul,
+                             x: totalOffset,
+                             y: y)
+          i += 2
+          inLoop = true
+        elif ((s1.kind == bfsApAdjust and
+               (s1.amt + totalOffset == 0)) and
+              s2.kind == bfsBlockEnd and inLoop):
+          result &= mulStk
+          result &= BFSymbol(kind: bfsMemZero)
+          i += 2
+          break
+        else:
+          i = j
+          result &= symbols[i]
+          inc i
+          break
     else:
       result &= symbols[i]
       inc i
@@ -191,11 +281,10 @@ macro compile*(fileName: string): untyped =
     program = slurp(fileName.strVal)
     instructions = toSeq(program.items)
     symbols = map(instructions, proc(x: char): BFSymbol = charToSymbol(x))
-    coalesced = coalesceAdjustments(symbols)
-    withMemZero = generateMemZeroes(coalesced)
+    optimized = (symbols.coalesceAdjustments.generateMemZeroes.generateMulLoops)
 
   echo "generating nim AST"
-  for sym in withMemZero:
+  for sym in optimized:
     case sym.kind
     of bfsApAdjust:
       blockStack[^1] <- genApAdjust(sym.amt)
@@ -212,8 +301,10 @@ macro compile*(fileName: string): untyped =
       inc blockCount
     of bfsBlockEnd:
       blockStack = blockStack[0.. ^2]
-    of bfsMemZEro:
+    of bfsMemZero:
       blockstack[^1] <- genMemZero()
+    of bfsMul:
+      blockstack[^1] <- genMul(sym.x, sym.y)
     of bfsNoOp: discard
     else: discard
 
