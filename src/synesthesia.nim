@@ -39,6 +39,7 @@ when isMainModule:
     absInFile = abspath(inFilePath)
     (dir, name, ext) = splitFile(absInFile)
     expandedTemplate = bfTemplate.replace("SOURCEFILE", &"\"{absInFile}\"")
+    outFile = absPath($args["--output"])
 
   echo args
   echo name
@@ -48,5 +49,5 @@ when isMainModule:
 
   if args["--compile"]:
     "temp_file.nim".writeFile(expandedTemplate)
-    let compileResult = execCmd("nim c --opt=size -d:release temp_file.nim")
+    let compileResult = execCmd(&"nim c --opt=size -d:release -o:{outFile} temp_file.nim")
     quit compileResult
