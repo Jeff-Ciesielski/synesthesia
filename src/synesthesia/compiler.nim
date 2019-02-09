@@ -124,21 +124,28 @@ proc genApAdjust(amount: int): NimNode =
   )
 
 
-proc genMemAdjust(amount: int): NimNode =
-  nnkInfix.newTree(
-    newIdentNode("+="),
-    nnkBracketExpr.newTree(
-      nnkDotExpr.newTree(
-        newIdentNode("core"),
-        newIdentNode("memory")
+proc genMemAdjust(amount: int, offset: int): NimNode =
+  nnkStmtList.newTree(
+    nnkInfix.newTree(
+      newIdentNode("+="),
+      nnkBracketExpr.newTree(
+        nnkDotExpr.newTree(
+          newIdentNode("core"),
+          newIdentNode("memory")
+        ),
+        nnkInfix.newTree(
+          newIdentNode("+"),
+          nnkDotExpr.newTree(
+            newIdentNode("core"),
+            newIdentNode("ap")
+          ),
+          newLit(offset)
+        )
       ),
-      nnkDotExpr.newTree(
-        newIdentNode("core"),
-        newIdentNode("ap")
-      )
-    ),
-    newIntLitNode(amount),
+      newLit(amount)
+    )
   )
+  
 
 proc genBlock(id: int): NimNode =
   nnkCall.newTree(
@@ -206,6 +213,29 @@ proc generateMemZeroes(symbols: seq[BFSymbol]): seq[BFSymbol] =
       result &= symbols[i]
       inc i
 
+proc generateDeferredMovements(symbols: seq[BFSymbol]): seq[BFSymbol] =
+  echo "Optimizing out unnecessary AP Movement"
+  result = @[]
+
+  var
+    i = 0
+    totalOffset = 0
+    accum: seq[BFSymbol] = @[]
+
+  while i < symbols.len:
+    if symbols[i].kind == bfsMemAdjust:
+      result &= BFSymbol(kind: bfsMemAdjust,
+                         amt: symbols[i].amt,
+                         offset: totalOffset)
+    elif symbols[i].kind == bfsApAdjust:
+      totalOffset += symbols[i].amt
+    else:
+      result &= BFSymbol(kind: bfsApAdjust,
+                         amt: totalOffset)
+      totalOffset = 0
+      result &= symbols[i]
+    inc i
+
 ## Condenses multiplication loops into multiplication instructions
 ## i.e. [->+++>+++<<] becomes two multiplications: Mul 1,3 and Mul 2,3
 proc generateMulLoops(symbols: seq[BFSymbol]): seq[BFSymbol] =
@@ -266,15 +296,22 @@ macro compile*(fileName: string): untyped =
     program = slurp(fileName.strVal)
     instructions = toSeq(program.items)
     symbols = map(instructions, proc(x: char): BFSymbol = charToSymbol(x))
-    optimized = (symbols.coalesceAdjustments.generateMemZeroes.generateMulLoops)
+    optimized = (
+      symbols
+      .coalesceAdjustments
+      .generateMemZeroes
+      .generateMulLoops
+      .generateDeferredMovements
+    )
 
+  echo &"Reduced instruction count by {100.0 - (optimized.len/symbols.len)*100}%"
   echo "generating nim AST"
   for sym in optimized:
     case sym.kind
     of bfsApAdjust:
       blockStack[^1] <- genApAdjust(sym.amt)
     of bfsMemAdjust:
-      blockStack[^1] <- genMemAdjust(sym.amt)
+      blockStack[^1] <- genMemAdjust(sym.amt, sym.offset)
     of bfsPrint:
       blockStack[^1] <- genPrintMemory()
     of bfsRead:

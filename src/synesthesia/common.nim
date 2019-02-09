@@ -18,6 +18,7 @@ type
     case kind*: BFSymbolKind
     of bfsApAdjust, bfsMemAdjust:
       amt*: int
+      offset*: int
     of bfsBlock:
       statements*: seq[BFSymbol]
     of bfsMul:
