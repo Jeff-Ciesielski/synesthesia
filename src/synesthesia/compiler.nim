@@ -203,6 +203,8 @@ macro compile*(fileName: string): untyped =
     program = slurp(fileName.strVal)
     instructions = toSeq(program.items)
     symbols = map(instructions, proc(x: char): BFSymbol = charToSymbol(x))
+    # Order of operations here is important! We're iteratively
+    # improving the patterns that are generated!
     optimized = (
       symbols
       .coalesceAdjustments
@@ -210,6 +212,7 @@ macro compile*(fileName: string): untyped =
       .generateMulLoops
       .generateDeferredMovements
       .removeDeadAdjustments
+      .combineMemSets
     )
 
   echo &"Reduced instruction count by {100.0 - (optimized.len/symbols.len)*100}% {symbols.len} => {optimized.len}"

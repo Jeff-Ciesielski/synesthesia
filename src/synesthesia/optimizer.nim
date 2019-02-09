@@ -132,10 +132,23 @@ proc removeDeadAdjustments*(symbols: seq[BFSymbol]): seq[BFSymbol] =
     else:
       result &= symbols[i]
 
-proc combineMemZeroAdjust*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+## If we see back to back memSet => memAdjust, and they share an
+## offset, we can combine them into a single memset.
+proc combineMemSets*(symbols: seq[BFSymbol]): seq[BFSymbol] =
   echo "Combining adjascent memZero + memAdjust"
   result = @[]
 
   var i = 0
   while i < symbols.len:
-    return symbols
+    if (i < symbols.high and
+        symbols[i].kind == bfsMemSet and
+        symbols[i].amt == 0 and
+        symbols[i+1].kind == bfsMemAdjust and
+        (symbols[i].offset == symbols[i+1].offset)):
+      result &= BFSymbol(kind: bfsMemSet,
+                         offset: symbols[i].offset,
+                         amt: symbols[i+1].amt + symbols[i].amt)
+      i += 2
+    else:
+      result &= symbols[i]
+      i += 1
