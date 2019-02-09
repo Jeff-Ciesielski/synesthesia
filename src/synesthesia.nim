@@ -8,8 +8,8 @@ import docopt
 
 
 
-import synesthesia/common
-import synesthesia/interpreter
+import synesthesiapkg/common
+import synesthesiapkg/interpreter
 
 let doc = """Brainfuck Compiler/Interpreter
 Usage:
@@ -23,8 +23,8 @@ Options:
 """
 
 let bfTemplate = """
-import synesthesia/compiler
-import synesthesia/common
+import synesthesiapkg/compiler
+import synesthesiapkg/common
 
 compile(SOURCEFILE)
 """
