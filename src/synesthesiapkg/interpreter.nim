@@ -32,6 +32,7 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
   for cell in bf.memory.mitems:
     cell = 0
 
+  # Do the business
   while bf.pc <= symbols.high:
     case symbols[bf.pc].kind
     of bfsApAdjust:

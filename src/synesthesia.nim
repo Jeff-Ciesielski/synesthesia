@@ -6,12 +6,12 @@ import strformat
 
 import docopt
 
-
-
 import synesthesiapkg/common
 import synesthesiapkg/interpreter
 
 let doc = """Brainfuck Compiler/Interpreter
+(C) 2019 Jeff Ciesielski <jeffciesielski@gmail.com>
+
 Usage:
   synesthesia (--interpret | --compile) [--output=OUTFILE] INPUT
 
@@ -40,9 +40,6 @@ when isMainModule:
     (dir, name, ext) = splitFile(absInFile)
     expandedTemplate = bfTemplate.replace("SOURCEFILE", &"\"{absInFile}\"")
     outFile = absPath($args["--output"])
-
-  echo args
-  echo name
 
   if args["--interpret"]:
     BFCore().interpret(readFile($args["INPUT"]), true)

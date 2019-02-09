@@ -8,6 +8,17 @@ import random
 import common
 import optimizer
 
+# A bit of a hack, but doWhile and loopBlock unroll to the following:
+# if a != 0:
+#   while true:
+#     b
+#     if not a:
+#       break # (breaks out beyond the while true)
+
+# This was found to be much faster than simply wrapping the entire
+# statement in `while a != 0`.  I believe that this is a quirk of nim
+# 0.18, and will investigate in the future.
+
 template doWhile*(a: typed, b: untyped): untyped =
   while true:
     b
@@ -19,11 +30,14 @@ template loopBlock*(a: typed, b: untyped): untyped =
     doWhile(a != 0):
       b
 
+## Helper code that is used by the compiler to simplify AST generation
 proc readCharacter*(): int =
   var tempMem: array[1, char]
   discard stdin.readChars(tempMem, 0, 1)
   tempMem[0].int
 
+## A helper for adding additional child statements to specific nimnode
+## types. (cleans up the AST generating code)
 proc `<-`(a, b: NimNode) =
   case a.kind
   of nnkBlockStmt:
@@ -33,6 +47,7 @@ proc `<-`(a, b: NimNode) =
   else:
     echo "wtf"
 
+## Generates a lexical block that all other code will live inside
 proc genInitialBlock(): NimNode =
   nnkBlockStmt.newTree(
     newIdentNode("bfProg"),
@@ -49,6 +64,8 @@ proc genInitialBlock(): NimNode =
     )
   )
 
+## Generates a print instruction
+## stdout.write(core.memory[core.ap].char)
 proc genPrintMemory(): NimNode =
   nnkCommand.newTree(
     nnkDotExpr.newTree(
@@ -70,6 +87,8 @@ proc genPrintMemory(): NimNode =
       )
     )
 
+## Generates a memSet instruction
+## core.memory[core.ap + <offset>] = <amt>
 proc genMemSet(offset, amt: int): NimNode =
   nnkStmtList.newTree(
     nnkAsgn.newTree(
@@ -91,6 +110,8 @@ proc genMemSet(offset, amt: int): NimNode =
     )
   )
 
+## Generates a multiplication instruction
+## core.memory[core.ap + <x>] += core.memory[core.ap] * <y>
 proc genMul(x, y: int): NimNode =
   nnkStmtList.newTree(
     nnkInfix.newTree(
@@ -126,6 +147,8 @@ proc genMul(x, y: int): NimNode =
     )
   )
 
+## Generates an AP adjust
+## core.ap += <amount>
 proc genApAdjust(amount: int): NimNode =
   nnkInfix.newTree(
     newIdentNode("+="),
@@ -136,7 +159,8 @@ proc genApAdjust(amount: int): NimNode =
     newLit(amount)
   )
 
-
+## Generates a memory adjust
+## core.memory[core.ap + <offset>] += <amount>
 proc genMemAdjust(amount: int, offset: int): NimNode =
   nnkStmtList.newTree(
     nnkInfix.newTree(
@@ -159,7 +183,9 @@ proc genMemAdjust(amount: int, offset: int): NimNode =
     )
   )
 
-
+## Generates a new loop block
+## loopBlock(core.memory[core.ap]):
+##   <statements>
 proc genBlock(id: int): NimNode =
   nnkCall.newTree(
     newIdentNode("loopBlock"),
@@ -176,6 +202,8 @@ proc genBlock(id: int): NimNode =
     newStmtList()
   )
 
+## Generates a read instruction
+## core.memory[core.ap] = readCharacter()
 proc genRead(): NimNode =
   nnkStmtList.newTree(
     nnkAsgn.newTree(
@@ -203,8 +231,6 @@ macro compile*(fileName: string): untyped =
     program = slurp(fileName.strVal)
     instructions = toSeq(program.items)
     symbols = map(instructions, proc(x: char): BFSymbol = charToSymbol(x))
-    # Order of operations here is important! We're iteratively
-    # improving the patterns that are generated!
     optimized = symbols.applyAllOptimizations()
 
   echo &"Reduced instruction count by {100.0 - (optimized.len/symbols.len)*100}% {symbols.len} => {optimized.len}"
@@ -234,9 +260,8 @@ macro compile*(fileName: string): untyped =
     else: discard
 
   result = newStmtList().add(blockStack[0])
-  #echo result.treeRepr
 
-
+# Example output:
 # +[>+[.]]
 #dumpAstGen:
 #dumpTree:
