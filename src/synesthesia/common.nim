@@ -16,14 +16,11 @@ type
 
   BFSymbol* = object of RootObj
     case kind*: BFSymbolKind
-    of bfsApAdjust, bfsMemAdjust:
+    of bfsApAdjust, bfsMemAdjust, bfsMul:
       amt*: int
       offset*: int
     of bfsBlock:
       statements*: seq[BFSymbol]
-    of bfsMul:
-      x*: int
-      y*: int
     else: discard
 
 proc charToSymbol*(c: char): BFSymbol =

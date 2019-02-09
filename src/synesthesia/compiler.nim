@@ -229,7 +229,7 @@ macro compile*(fileName: string): untyped =
     of bfsMemZero:
       blockstack[^1] <- genMemZero()
     of bfsMul:
-      blockstack[^1] <- genMul(sym.x, sym.y)
+      blockstack[^1] <- genMul(sym.offset, sym.amt)
     of bfsNoOp: discard
     else: discard
 

@@ -94,10 +94,9 @@ proc generateMulLoops*(symbols: seq[BFSymbol]): seq[BFSymbol] =
 
           totalOffset += s1.amt
 
-
           mulStk &= BFSymbol(kind:bfsMul,
-                             x: totalOffset,
-                             y: y)
+                             offset: totalOffset,
+                             amt: y)
           i += 2
           inLoop = true
         elif ((s1.kind == bfsApAdjust and
