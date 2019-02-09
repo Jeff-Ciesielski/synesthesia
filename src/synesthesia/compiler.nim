@@ -70,20 +70,25 @@ proc genPrintMemory(): NimNode =
       )
     )
 
-proc genMemZero(): NimNode =
-  nnkInfix.newTree(
-    newIdentNode("="),
-    nnkBracketExpr.newTree(
-      nnkDotExpr.newTree(
-        newIdentNode("core"),
-        newIdentNode("memory")
+proc genMemZero(offset: int): NimNode =
+  nnkStmtList.newTree(
+    nnkAsgn.newTree(
+      nnkBracketExpr.newTree(
+        nnkDotExpr.newTree(
+          newIdentNode("core"),
+          newIdentNode("memory")
+        ),
+        nnkInfix.newTree(
+          newIdentNode("+"),
+          nnkDotExpr.newTree(
+            newIdentNode("core"),
+            newIdentNode("ap")
+          ),
+          newIntLitNode(offset)
+        )
       ),
-      nnkDotExpr.newTree(
-        newIdentNode("core"),
-        newIdentNode("ap")
-      )
-    ),
-    newIntLitNode(0)
+      newLit(0)
+    )
   )
 
 proc genMul(x, y: int): NimNode =
@@ -227,7 +232,7 @@ macro compile*(fileName: string): untyped =
     of bfsBlockEnd:
       blockStack = blockStack[0.. ^2]
     of bfsMemZero:
-      blockstack[^1] <- genMemZero()
+      blockstack[^1] <- genMemZero(sym.offset)
     of bfsMul:
       blockstack[^1] <- genMul(sym.offset, sym.amt)
     of bfsNoOp: discard

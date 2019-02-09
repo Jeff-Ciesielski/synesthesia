@@ -16,7 +16,7 @@ type
 
   BFSymbol* = object of RootObj
     case kind*: BFSymbolKind
-    of bfsApAdjust, bfsMemAdjust, bfsMul:
+    of bfsApAdjust, bfsMemAdjust, bfsMul, bfsMemZero:
       amt*: int
       offset*: int
     of bfsBlock:

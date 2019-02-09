@@ -55,6 +55,9 @@ proc generateDeferredMovements*(symbols: seq[BFSymbol]): seq[BFSymbol] =
       result &= BFSymbol(kind: bfsMemAdjust,
                          amt: symbols[i].amt,
                          offset: totalOffset)
+    elif symbols[i].kind == bfsMemZero:
+      result &= BFSymbol(kind: bfsMemZero,
+                         offset: totalOffset)
     elif symbols[i].kind == bfsApAdjust:
       totalOffset += symbols[i].amt
     else:
