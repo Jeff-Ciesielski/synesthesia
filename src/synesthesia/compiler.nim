@@ -4,6 +4,7 @@ import sequtils
 import strformat
 import tables
 import common
+import random
 
 template doWhile*(a: typed, b: untyped): untyped =
   while true:
@@ -15,6 +16,11 @@ template loopBlock*(a: typed, b: untyped): untyped =
   if a != 0:
     doWhile(a != 0):
       b
+
+proc readCharacter*(): int =
+  var tempMem: array[1, char]
+  discard stdin.readChars(tempMem, 0, 1)
+  tempMem[0].int
 
 proc `<-`(a, b: NimNode) =
   case a.kind
@@ -145,7 +151,7 @@ proc genMemAdjust(amount: int, offset: int): NimNode =
       newLit(amount)
     )
   )
-  
+
 
 proc genBlock(id: int): NimNode =
   nnkCall.newTree(
@@ -162,6 +168,26 @@ proc genBlock(id: int): NimNode =
     ),
     newStmtList()
   )
+
+proc genRead(): NimNode =
+  nnkStmtList.newTree(
+    nnkAsgn.newTree(
+      nnkBracketExpr.newTree(
+        nnkDotExpr.newTree(
+          newIdentNode("core"),
+          newIdentNode("memory")
+        ),
+        nnkDotExpr.newTree(
+          newIdentNode("core"),
+          newIdentNode("ap")
+        )
+      ),
+      nnkCall.newTree(
+        newIdentNode("readCharacter")
+      )
+    )
+  )
+
 
 proc charToSymbol(c: char): BFSymbol =
   case c
@@ -213,6 +239,10 @@ proc generateMemZeroes(symbols: seq[BFSymbol]): seq[BFSymbol] =
       result &= symbols[i]
       inc i
 
+## In long stretches of only AP+Mem adjusts, we can remove unnecessary
+## AP movements by instead tabulating a running total offset and
+## performing a series of mem adjustments at those offsets, setting
+## the final AP adjustment at the end
 proc generateDeferredMovements(symbols: seq[BFSymbol]): seq[BFSymbol] =
   echo "Optimizing out unnecessary AP Movement"
   result = @[]
@@ -315,7 +345,7 @@ macro compile*(fileName: string): untyped =
     of bfsPrint:
       blockStack[^1] <- genPrintMemory()
     of bfsRead:
-      echo "read memory"
+      blockStack[^1] <- genRead()
     of bfsBlock:
       let blk = genBlock(blockCount)
       blockStack[^1] <- blk
