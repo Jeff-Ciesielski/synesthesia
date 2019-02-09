@@ -190,20 +190,6 @@ proc genRead(): NimNode =
     )
   )
 
-
-proc charToSymbol(c: char): BFSymbol =
-  case c
-  of '>': BFSymbol(kind: bfsApAdjust, amt: 1)
-  of '<': BFSymbol(kind: bfsApAdjust, amt: -1)
-  of '+': BFSymbol(kind: bfsMemAdjust, amt: 1)
-  of '-': BFSymbol(kind: bfsMemAdjust, amt: -1)
-  of '.': BFSymbol(kind: bfsPrint)
-  of ',': BFSymbol(kind: bfsRead)
-  of '[': BFSymbol(kind: bfsBlock, statements: @[])
-  of ']': BFSymbol(kind: bfsBlockEnd)
-  else:   BFSymbol(kind: bfsNoOp)
-
-
 macro compile*(fileName: string): untyped =
   var
     blockStack = @[genInitialBlock()]

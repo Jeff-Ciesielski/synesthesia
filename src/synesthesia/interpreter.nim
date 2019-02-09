@@ -1,17 +1,29 @@
 import common
 import tables
+import sequtils
+import optimizer
 
-proc interpret*(bf: BFCore, program: string) =
+proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
   # Before we start, we need to pre-calculate our jump table
   var
     jumpTbl = initTable[int, int]()
     jumpStk: seq[int] = @[]
+    symbols = if optimize:
+                (
+                  map(program, proc(x: char): BFSymbol = charToSymbol(x))
+                  .coalesceAdjustments
+                  .generateMemZeroes
+                  .generateMulLoops
+                  .generateDeferredMovements
+                )
+              else:
+                map(program, proc(x: char): BFSymbol = charToSymbol(x))    
 
-  for pc, inst in program:
-    case inst
-    of '[':
+  for pc, sym in symbols:
+    case sym.kind
+    of bfsBlock:
       jumpStk &= pc
-    of ']':
+    of bfsBlockEnd:
       let fjp = jumpStk[^1]
       jumpStk = jumpStk[0.. ^2]
       jumpTbl[pc] = fjp
@@ -24,25 +36,27 @@ proc interpret*(bf: BFCore, program: string) =
   for cell in bf.memory.mitems:
     cell = 0
 
-  while bf.pc <= program.high:
-    case program[bf.pc]
-    of '>': inc bf.ap
-    of '<': dec bf.ap
-    of '+': inc bf.memory[bf.ap]
-    of '-': dec bf.memory[bf.ap]
-    of '.':
+  while bf.pc <= symbols.high:
+    let sym = symbols[bf.pc]
+    case sym.kind
+    of bfsApAdjust: bf.ap += sym.amt
+    of bfsMemAdjust: bf.memory[bf.ap + sym.offset] += sym.amt
+    of bfsPrint:
       stdout.write bf.memory[bf.ap].char
       stdout.flushFile()
-    of ',':
+    of bfsRead:
       var tempMem: array[1, char]
       discard stdin.readChars(tempMem, 0, 1)
       bf.memory[bf.ap] = tempMem[0].int
-    of '[':
+    of bfsBlock:
       if bf.memory[bf.ap] == 0:
         bf.pc = jumpTbl[bf.pc]
-    of ']':
+    of bfsBlockEnd:
       if bf.memory[bf.ap] != 0:
         bf.pc = jumpTbl[bf.pc]
+    of bfsMemZero: bf.memory[bf.ap] = 0
+    of bfsMul: bf.memory[bf.ap + sym.x] += bf.memory[bf.ap] * sym.y
+      
     else: discard
     inc bf.pc
     

@@ -49,7 +49,6 @@ proc generateDeferredMovements*(symbols: seq[BFSymbol]): seq[BFSymbol] =
   var
     i = 0
     totalOffset = 0
-    accum: seq[BFSymbol] = @[]
 
   while i < symbols.len:
     if symbols[i].kind == bfsMemAdjust:

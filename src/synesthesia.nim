@@ -44,7 +44,7 @@ when isMainModule:
   echo name
 
   if args["--interpret"]:
-    BFCore().interpret(readFile($args["INPUT"]))
+    BFCore().interpret(readFile($args["INPUT"]), true)
 
   if args["--compile"]:
     "temp_file.nim".writeFile(expandedTemplate)
