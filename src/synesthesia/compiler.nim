@@ -70,7 +70,7 @@ proc genPrintMemory(): NimNode =
       )
     )
 
-proc genMemZero(offset: int): NimNode =
+proc genMemSet(offset, amt: int): NimNode =
   nnkStmtList.newTree(
     nnkAsgn.newTree(
       nnkBracketExpr.newTree(
@@ -87,7 +87,7 @@ proc genMemZero(offset: int): NimNode =
           newIntLitNode(offset)
         )
       ),
-      newLit(0)
+      newIntLitNode(amt)
     )
   )
 
@@ -231,8 +231,8 @@ macro compile*(fileName: string): untyped =
       inc blockCount
     of bfsBlockEnd:
       blockStack = blockStack[0.. ^2]
-    of bfsMemZero:
-      blockstack[^1] <- genMemZero(sym.offset)
+    of bfsMemSet:
+      blockstack[^1] <- genMemSet(sym.offset, sym.amt)
     of bfsMul:
       blockstack[^1] <- genMul(sym.offset, sym.amt)
     of bfsNoOp: discard

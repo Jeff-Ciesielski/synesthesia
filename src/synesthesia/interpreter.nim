@@ -54,7 +54,7 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
     of bfsBlockEnd:
       if bf.memory[bf.ap] != 0:
         bf.pc = jumpTbl[bf.pc]
-    of bfsMemZero: bf.memory[bf.ap] = 0
+    of bfsMemSet: bf.memory[bf.ap + sym.offset] = sym.amt
     of bfsMul: bf.memory[bf.ap + sym.offset] += bf.memory[bf.ap] * sym.amt
       
     else: discard

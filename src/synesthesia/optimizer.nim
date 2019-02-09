@@ -19,7 +19,7 @@ proc coalesceAdjustments*(symbols: seq[BFSymbol]): seq[BFSymbol] =
         result &= sym
     else: result &= sym
 
-## Our next optimizaiton is the generation of 'MemZero' commands. The
+## Our next optimizaiton is the generation of 'MemSet(0, 0)' commands. The
 ## pattern `[-]` is very common in BF programming, and essentially
 ## means loop on the current memory location until it reaches zero,
 ## and then continue.  We can skip all those nasty branches with a simple set
@@ -32,7 +32,7 @@ proc generateMemZeroes*(symbols: seq[BFSymbol]): seq[BFSymbol] =
     if (i < symbols.high and symbols[i].kind == bfsBlock and
         (symbols[i+1].kind == bfsMemAdjust and symbols[i+1].amt == -1) and
         symbols[i+2].kind == bfsBlockEnd):
-      result &= BFSymbol(kind: bfsMemZero)
+      result &= BFSymbol(kind: bfsMemSet)
       i += 3
     else:
       result &= symbols[i]
@@ -55,8 +55,8 @@ proc generateDeferredMovements*(symbols: seq[BFSymbol]): seq[BFSymbol] =
       result &= BFSymbol(kind: bfsMemAdjust,
                          amt: symbols[i].amt,
                          offset: totalOffset)
-    elif symbols[i].kind == bfsMemZero:
-      result &= BFSymbol(kind: bfsMemZero,
+    elif symbols[i].kind == bfsMemSet:
+      result &= BFSymbol(kind: bfsMemSet,
                          offset: totalOffset)
     elif symbols[i].kind == bfsApAdjust:
       totalOffset += symbols[i].amt
@@ -106,7 +106,7 @@ proc generateMulLoops*(symbols: seq[BFSymbol]): seq[BFSymbol] =
                (s1.amt + totalOffset == 0)) and
               s2.kind == bfsBlockEnd and inLoop):
           result &= mulStk
-          result &= BFSymbol(kind: bfsMemZero)
+          result &= BFSymbol(kind: bfsMemSet)
           i += 2
           break
         else:
@@ -131,3 +131,11 @@ proc removeDeadAdjustments*(symbols: seq[BFSymbol]): seq[BFSymbol] =
         result &= symbols[i]
     else:
       result &= symbols[i]
+
+proc combineMemZeroAdjust*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+  echo "Combining adjascent memZero + memAdjust"
+  result = @[]
+
+  var i = 0
+  while i < symbols.len:
+    return symbols

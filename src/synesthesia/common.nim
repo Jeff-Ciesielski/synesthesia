@@ -10,13 +10,13 @@ type
     bfsRead,
     bfsBlock,
     bfsBlockEnd,
-    bfsMemZero,
+    bfsMemSet,
     bfsMul,
     bfsNoOp
 
   BFSymbol* = object of RootObj
     case kind*: BFSymbolKind
-    of bfsApAdjust, bfsMemAdjust, bfsMul, bfsMemZero:
+    of bfsApAdjust, bfsMemAdjust, bfsMul, bfsMemSet:
       amt*: int
       offset*: int
     of bfsBlock:
