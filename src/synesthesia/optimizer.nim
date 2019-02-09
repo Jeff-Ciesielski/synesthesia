@@ -116,3 +116,16 @@ proc generateMulLoops*(symbols: seq[BFSymbol]): seq[BFSymbol] =
       result &= symbols[i]
       inc i
 
+proc removeDeadAdjustments*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+  echo "removing zero moves"
+  result = @[]
+
+  for i in 0..symbols.high:
+    case symbols[i].kind
+    of bfsAPAdjust, bfsMemAdjust:
+      if symbols[i].amt == 0:
+        continue
+      else:
+        result &= symbols[i]
+    else:
+      result &= symbols[i]

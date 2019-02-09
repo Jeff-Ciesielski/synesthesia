@@ -204,9 +204,10 @@ macro compile*(fileName: string): untyped =
       .generateMemZeroes
       .generateMulLoops
       .generateDeferredMovements
+      .removeDeadAdjustments
     )
 
-  echo &"Reduced instruction count by {100.0 - (optimized.len/symbols.len)*100}%"
+  echo &"Reduced instruction count by {100.0 - (optimized.len/symbols.len)*100}% {symbols.len} => {optimized.len}"
   echo "generating nim AST"
   for sym in optimized:
     case sym.kind
