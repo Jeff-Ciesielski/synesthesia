@@ -205,15 +205,7 @@ macro compile*(fileName: string): untyped =
     symbols = map(instructions, proc(x: char): BFSymbol = charToSymbol(x))
     # Order of operations here is important! We're iteratively
     # improving the patterns that are generated!
-    optimized = (
-      symbols
-      .coalesceAdjustments
-      .generateMemZeroes
-      .generateMulLoops
-      .generateDeferredMovements
-      .removeDeadAdjustments
-      .combineMemSets
-    )
+    optimized = symbols.applyAllOptimizations()
 
   echo &"Reduced instruction count by {100.0 - (optimized.len/symbols.len)*100}% {symbols.len} => {optimized.len}"
   echo "generating nim AST"

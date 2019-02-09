@@ -118,6 +118,9 @@ proc generateMulLoops*(symbols: seq[BFSymbol]): seq[BFSymbol] =
       result &= symbols[i]
       inc i
 
+## Occasionally after a few rounds of optimization, you'll see a mem
+## or ap adjust with a zero amount. If that happens, they can just be
+## excluded as they're effectively a no-op
 proc removeDeadAdjustments*(symbols: seq[BFSymbol]): seq[BFSymbol] =
   echo "removing zero moves"
   result = @[]
@@ -152,3 +155,13 @@ proc combineMemSets*(symbols: seq[BFSymbol]): seq[BFSymbol] =
     else:
       result &= symbols[i]
       i += 1
+
+proc applyAllOptimizations*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+  result = (symbols
+            .coalesceAdjustments
+            .generateMemZeroes
+            .generateMulLoops
+            .generateDeferredMovements
+            .removeDeadAdjustments
+            .combineMemSets
+  )

@@ -4,21 +4,17 @@ import sequtils
 import optimizer
 
 proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
-  # Before we start, we need to pre-calculate our jump table
   var
     jumpTbl = initTable[int, int]()
     jumpStk: seq[int] = @[]
     symbols = if optimize:
-                (
-                  map(program, proc(x: char): BFSymbol = charToSymbol(x))
-                  .coalesceAdjustments
-                  .generateMemZeroes
-                  .generateMulLoops
-                  .generateDeferredMovements
-                )
+                (map(program, proc(x: char): BFSymbol = charToSymbol(x))
+                .applyAllOptimizations)
               else:
                 map(program, proc(x: char): BFSymbol = charToSymbol(x))    
+    tempMem: array[1, char]
 
+  # Before we start, pre-compute a jump table
   for pc, sym in symbols:
     case sym.kind
     of bfsBlock:
@@ -37,15 +33,15 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
     cell = 0
 
   while bf.pc <= symbols.high:
-    let sym = symbols[bf.pc]
-    case sym.kind
-    of bfsApAdjust: bf.ap += sym.amt
-    of bfsMemAdjust: bf.memory[bf.ap + sym.offset] += sym.amt
+    case symbols[bf.pc].kind
+    of bfsApAdjust:
+      bf.ap += symbols[bf.pc].amt
+    of bfsMemAdjust:
+      bf.memory[bf.ap + symbols[bf.pc].offset] += symbols[bf.pc].amt
     of bfsPrint:
       stdout.write bf.memory[bf.ap].char
       stdout.flushFile()
     of bfsRead:
-      var tempMem: array[1, char]
       discard stdin.readChars(tempMem, 0, 1)
       bf.memory[bf.ap] = tempMem[0].int
     of bfsBlock:
@@ -54,10 +50,11 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
     of bfsBlockEnd:
       if bf.memory[bf.ap] != 0:
         bf.pc = jumpTbl[bf.pc]
-    of bfsMemSet: bf.memory[bf.ap + sym.offset] = sym.amt
-    of bfsMul: bf.memory[bf.ap + sym.offset] += bf.memory[bf.ap] * sym.amt
-      
-    else: discard
+    of bfsMemSet:
+      bf.memory[bf.ap + symbols[bf.pc].offset] = symbols[bf.pc].amt
+    of bfsMul:
+      bf.memory[bf.ap + symbols[bf.pc].offset] += bf.memory[bf.ap] * symbols[bf.pc].amt
+    of bfsNoOp: discard
     inc bf.pc
     
 when isMainModule:
