@@ -106,32 +106,32 @@ This file is compiled with the release and optimize-for-size flags
 applied (size optimization tends to produce faster code than speed
 optimization due to the nature of the code generated)
 
-### Step 1: Transformation to a list of symbols
+### Step 1: Transformation to a list of tokens
 
 Once a BF source file has been opened and the contents read into a
 sequence of characters, this sequence is iterated over and each
-relevant character is converted into an object: `BFSymbol`. `BFSymbol`
+relevant character is converted into an object: `BFToken`. `BFToken`
 is a variant type (i.e. it includes a `kind` field, think tagged
 unions in c).
 
 For example, the `'>'` character causes the AP (memory cell index) to
 be incremented by one, and `'<'` causes it to be decremented by one.
 
-Given that, we can conclude that we need an ApAdjust symbol for +1,
+Given that, we can conclude that we need an ApAdjust token for +1,
 and another for -1.  With variant types, we can simply include an
-`amt` field in the `bfsApAdjust` symbol, and generate an appropriate
-variant when each symbol is encountered.
+`amt` field in the `bfsApAdjust` token, and generate an appropriate
+variant when each token is encountered.
 
 (The same idea goes for memory adjustment with the `bfsMemAdjust`
 variant)
 
-A full listing of charcter => symbol mappings can be found in
+A full listing of charcter => token mappings can be found in
 `src/synesthesiapkg/common.nim`
 
 ### Step 2: Optimization
 
 synesthesia implements a set of [peephole optimizers](https://en.wikipedia.org/wiki/Peephole_optimization)
-that are applied to the resulting list of symbols.  Some of these optimizations are
+that are applied to the resulting list of tokens.  Some of these optimizations are
 obvious from the top level BF source (coalescing adjustments for
 example), while others work best if applied after other optimizations
 have already been made (dead adjustments / combining memory sets)
@@ -160,7 +160,7 @@ offsets.
 ### Step 3: AST Generation
 
 Once all optimizations are applied, AST generation can begin. For the
-most part, ast generation is pretty strait forward, symbols are simply
+most part, ast generation is pretty strait forward, tokens are simply
 transformed into NimNode objects representing their underlying purpose.
 
 For example:
@@ -175,7 +175,7 @@ synesthesia implements blocks as while loops (sort of, but we
 use if => doWhile for performance reasons)
 
 As we need to keep track of loops, we maintain a stack of 'blocks'
-during compilation.  As other symbols are decoded, their NimNodes are
+during compilation.  As other tokens are decoded, their NimNodes are
 added to the top block in the stack (i.e. their statements exist under
 the lexical scope of the last known open loop).  When a new block is
 encountered (`[` in BF), we generate a while loop scope and push it

@@ -4,13 +4,13 @@ import common
 ## and pointer adjustments.  e.g. +++++ is actually +5, so we can
 ## execute a single +5 instruction rather than five +1 instructions
 ## (same goes for memory adjustments > and <)
-proc coalesceAdjustments*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+proc coalesceAdjustments*(tokens: seq[BFToken]): seq[BFToken] =
   echo "Coalescing memory adjustments"
   result = @[]
 
-  result &= symbols[0]
+  result &= tokens[0]
 
-  for sym in symbols[1.. ^1]:
+  for sym in tokens[1.. ^1]:
     case sym.kind
     of bfsApAdjust, bfsMemAdjust:
       if sym.kind == result[^1].kind:
@@ -23,26 +23,26 @@ proc coalesceAdjustments*(symbols: seq[BFSymbol]): seq[BFSymbol] =
 ## pattern `[-]` is very common in BF programming, and essentially
 ## means loop on the current memory location until it reaches zero,
 ## and then continue.  We can skip all those nasty branches with a simple set
-proc generateMemZeroes*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+proc generateMemZeroes*(tokens: seq[BFToken]): seq[BFToken] =
   echo "Optimizing memory zero-sets"
   result = @[]
   var i = 0
 
-  while i < symbols.len:
-    if (i < symbols.high and symbols[i].kind == bfsBlock and
-        (symbols[i+1].kind == bfsMemAdjust and symbols[i+1].amt == -1) and
-        symbols[i+2].kind == bfsBlockEnd):
-      result &= BFSymbol(kind: bfsMemSet)
+  while i < tokens.len:
+    if (i < tokens.high and tokens[i].kind == bfsBlock and
+        (tokens[i+1].kind == bfsMemAdjust and tokens[i+1].amt == -1) and
+        tokens[i+2].kind == bfsBlockEnd):
+      result &= BFToken(kind: bfsMemSet)
       i += 3
     else:
-      result &= symbols[i]
+      result &= tokens[i]
       inc i
 
 ## In long stretches of only AP+Mem adjusts, we can remove unnecessary
 ## AP movements by instead tabulating a running total offset and
 ## performing a series of mem adjustments at those offsets, setting
 ## the final AP adjustment at the end
-proc generateDeferredMovements*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+proc generateDeferredMovements*(tokens: seq[BFToken]): seq[BFToken] =
   echo "Optimizing out unnecessary AP Movement"
   result = @[]
 
@@ -50,26 +50,26 @@ proc generateDeferredMovements*(symbols: seq[BFSymbol]): seq[BFSymbol] =
     i = 0
     totalOffset = 0
 
-  while i < symbols.len:
-    if symbols[i].kind == bfsMemAdjust:
-      result &= BFSymbol(kind: bfsMemAdjust,
-                         amt: symbols[i].amt,
+  while i < tokens.len:
+    if tokens[i].kind == bfsMemAdjust:
+      result &= BFToken(kind: bfsMemAdjust,
+                         amt: tokens[i].amt,
                          offset: totalOffset)
-    elif symbols[i].kind == bfsMemSet:
-      result &= BFSymbol(kind: bfsMemSet,
+    elif tokens[i].kind == bfsMemSet:
+      result &= BFToken(kind: bfsMemSet,
                          offset: totalOffset)
-    elif symbols[i].kind == bfsApAdjust:
-      totalOffset += symbols[i].amt
+    elif tokens[i].kind == bfsApAdjust:
+      totalOffset += tokens[i].amt
     else:
-      result &= BFSymbol(kind: bfsApAdjust,
+      result &= BFToken(kind: bfsApAdjust,
                          amt: totalOffset)
       totalOffset = 0
-      result &= symbols[i]
+      result &= tokens[i]
     inc i
 
 ## Condenses multiplication loops into multiplication instructions
 ## i.e. [->+++>+++<<] becomes two multiplications: Mul 1,3 and Mul 2,3
-proc generateMulLoops*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+proc generateMulLoops*(tokens: seq[BFToken]): seq[BFToken] =
   echo "Optimizing Multiply Loops"
   result = @[]
   var
@@ -77,11 +77,11 @@ proc generateMulLoops*(symbols: seq[BFSymbol]): seq[BFSymbol] =
     j = 0
     inLoop = false
     totalOffset = 0
-    mulStk: seq[BFSymbol] = @[]
+    mulStk: seq[BFToken] = @[]
 
-  while i < symbols.len:
-    if (i < symbols.high and symbols[i].kind == bfsBlock and
-        (symbols[i+1].kind == bfsMemAdjust and symbols[i+1].amt == -1)):
+  while i < tokens.len:
+    if (i < tokens.high and tokens[i].kind == bfsBlock and
+        (tokens[i+1].kind == bfsMemAdjust and tokens[i+1].amt == -1)):
       totalOffset = 0
       mulStk = @[]
       j = i
@@ -89,15 +89,15 @@ proc generateMulLoops*(symbols: seq[BFSymbol]): seq[BFSymbol] =
       inLoop = false
       while true:
         let
-          s1 = symbols[i]
-          s2 = symbols[i+1]
+          s1 = tokens[i]
+          s2 = tokens[i+1]
         if ((s1.kind == bfsApAdjust) and
             (s2.kind == bfsMemAdjust)):
           let y = s2.amt
 
           totalOffset += s1.amt
 
-          mulStk &= BFSymbol(kind:bfsMul,
+          mulStk &= BFToken(kind:bfsMul,
                              offset: totalOffset,
                              amt: y)
           i += 2
@@ -106,58 +106,58 @@ proc generateMulLoops*(symbols: seq[BFSymbol]): seq[BFSymbol] =
                (s1.amt + totalOffset == 0)) and
               s2.kind == bfsBlockEnd and inLoop):
           result &= mulStk
-          result &= BFSymbol(kind: bfsMemSet)
+          result &= BFToken(kind: bfsMemSet)
           i += 2
           break
         else:
           i = j
-          result &= symbols[i]
+          result &= tokens[i]
           inc i
           break
     else:
-      result &= symbols[i]
+      result &= tokens[i]
       inc i
 
 ## Occasionally after a few rounds of optimization, you'll see a mem
 ## or ap adjust with a zero amount. If that happens, they can just be
 ## excluded as they're effectively a no-op
-proc removeDeadAdjustments*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+proc removeDeadAdjustments*(tokens: seq[BFToken]): seq[BFToken] =
   echo "removing zero moves"
   result = @[]
 
-  for i in 0..symbols.high:
-    case symbols[i].kind
+  for i in 0..tokens.high:
+    case tokens[i].kind
     of bfsAPAdjust, bfsMemAdjust:
-      if symbols[i].amt == 0:
+      if tokens[i].amt == 0:
         continue
       else:
-        result &= symbols[i]
+        result &= tokens[i]
     else:
-      result &= symbols[i]
+      result &= tokens[i]
 
 ## If we see back to back memSet => memAdjust, and they share an
 ## offset, we can combine them into a single memset.
-proc combineMemSets*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+proc combineMemSets*(tokens: seq[BFToken]): seq[BFToken] =
   echo "Combining adjascent memZero + memAdjust"
   result = @[]
 
   var i = 0
-  while i < symbols.len:
-    if (i < symbols.high and
-        symbols[i].kind == bfsMemSet and
-        symbols[i].amt == 0 and
-        symbols[i+1].kind == bfsMemAdjust and
-        (symbols[i].offset == symbols[i+1].offset)):
-      result &= BFSymbol(kind: bfsMemSet,
-                         offset: symbols[i].offset,
-                         amt: symbols[i+1].amt + symbols[i].amt)
+  while i < tokens.len:
+    if (i < tokens.high and
+        tokens[i].kind == bfsMemSet and
+        tokens[i].amt == 0 and
+        tokens[i+1].kind == bfsMemAdjust and
+        (tokens[i].offset == tokens[i+1].offset)):
+      result &= BFToken(kind: bfsMemSet,
+                         offset: tokens[i].offset,
+                         amt: tokens[i+1].amt + tokens[i].amt)
       i += 2
     else:
-      result &= symbols[i]
+      result &= tokens[i]
       i += 1
 
-proc applyAllOptimizations*(symbols: seq[BFSymbol]): seq[BFSymbol] =
-  result = (symbols
+proc applyAllOptimizations*(tokens: seq[BFToken]): seq[BFToken] =
+  result = (tokens
             .coalesceAdjustments
             .generateMemZeroes
             .generateMulLoops

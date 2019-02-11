@@ -3,7 +3,7 @@ type
    memory*: array[1024, int]
    pc*, ap*: int
 
-  BFSymbolKind* = enum
+  BFTokenKind* = enum
     bfsApAdjust,
     bfsMemAdjust,
     bfsPrint,
@@ -14,23 +14,23 @@ type
     bfsMul,
     bfsNoOp
 
-  BFSymbol* = object of RootObj
-    case kind*: BFSymbolKind
+  BFToken* = object of RootObj
+    case kind*: BFTokenKind
     of bfsApAdjust, bfsMemAdjust, bfsMul, bfsMemSet:
       amt*: int
       offset*: int
     of bfsBlock:
-      statements*: seq[BFSymbol]
+      statements*: seq[BFToken]
     else: discard
 
-proc charToSymbol*(c: char): BFSymbol =
+proc charToToken*(c: char): BFToken =
   case c
-  of '>': BFSymbol(kind: bfsApAdjust, amt: 1)
-  of '<': BFSymbol(kind: bfsApAdjust, amt: -1)
-  of '+': BFSymbol(kind: bfsMemAdjust, amt: 1)
-  of '-': BFSymbol(kind: bfsMemAdjust, amt: -1)
-  of '.': BFSymbol(kind: bfsPrint)
-  of ',': BFSymbol(kind: bfsRead)
-  of '[': BFSymbol(kind: bfsBlock, statements: @[])
-  of ']': BFSymbol(kind: bfsBlockEnd)
-  else:   BFSymbol(kind: bfsNoOp)
+  of '>': BFToken(kind: bfsApAdjust, amt: 1)
+  of '<': BFToken(kind: bfsApAdjust, amt: -1)
+  of '+': BFToken(kind: bfsMemAdjust, amt: 1)
+  of '-': BFToken(kind: bfsMemAdjust, amt: -1)
+  of '.': BFToken(kind: bfsPrint)
+  of ',': BFToken(kind: bfsRead)
+  of '[': BFToken(kind: bfsBlock, statements: @[])
+  of ']': BFToken(kind: bfsBlockEnd)
+  else:   BFToken(kind: bfsNoOp)

@@ -230,10 +230,10 @@ macro compile*(fileName: string): untyped =
   let
     program = slurp(fileName.strVal)
     instructions = toSeq(program.items)
-    symbols = map(instructions, proc(x: char): BFSymbol = charToSymbol(x))
-    optimized = symbols.applyAllOptimizations()
+    tokens = map(instructions, proc(x: char): BFToken = charToToken(x))
+    optimized = tokens.applyAllOptimizations()
 
-  echo &"Reduced instruction count by {100.0 - (optimized.len/symbols.len)*100}% {symbols.len} => {optimized.len}"
+  echo &"Reduced instruction count by {100.0 - (optimized.len/tokens.len)*100}% {tokens.len} => {optimized.len}"
   echo "generating nim AST"
   for sym in optimized:
     case sym.kind
