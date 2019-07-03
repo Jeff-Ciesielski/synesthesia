@@ -111,7 +111,7 @@ proc genMemSet(offset, amt: int): NimNode =
   )
 
 ## Generates a multiplication instruction
-## core.memory[core.ap + <x>] += core.memory[core.ap - y] * <z>
+## core.memory[core.ap + <x>] += core.memory[core.ap + y] * <z>
 proc genMul(x, y, z: int): NimNode =
   nnkStmtList.newTree(
     nnkInfix.newTree(
@@ -150,6 +150,44 @@ proc genMul(x, y, z: int): NimNode =
       )
     )
   )
+
+
+## Generates a memory add instruction
+## core.memory[core.ap + <x>] += core.memory[core.ap + y]
+proc genMemAdd(x, y: int): NimNode =
+   nnkStmtList.newTree(
+    nnkInfix.newTree(
+      newIdentNode("+="),
+      nnkBracketExpr.newTree(
+        nnkDotExpr.newTree(
+          newIdentNode("core"),
+          newIdentNode("memory")
+        ),
+        nnkInfix.newTree(
+          newIdentNode("+"),
+          nnkDotExpr.newTree(
+            newIdentNode("core"),
+            newIdentNode("ap")
+          ),
+          newIntLitNode(x)
+        )
+      ),
+      nnkBracketExpr.newTree(
+        nnkDotExpr.newTree(
+          newIdentNode("core"),
+          newIdentNode("memory")
+        ),
+        nnkInfix.newTree(
+          newIdentNode("+"),
+          nnkDotExpr.newTree(
+            newIdentNode("core"),
+            newIdentNode("ap")
+          ),
+          newIntLitNode(y)
+        )
+      )
+    )
+   )
 
 ## Generates an AP adjust
 ## core.ap += <amount>
@@ -261,7 +299,9 @@ macro compile*(fileName: string): untyped =
     of bfsMemSet:
       blockstack[^1] <- genMemSet(sym.offset, sym.amt)
     of bfsMul:
-      blockstack[^1] <- genMul(sym.offset, sym.mulOffs, sym.amt)
+      blockstack[^1] <- genMul(sym.offset, sym.secondOffset, sym.amt)
+    of bfsMemAdd:
+      blockstack[^1] <- genMemAdd(sym.offset, sym.secondOffset)
     of bfsNoOp: discard
     else: discard
 

@@ -14,14 +14,15 @@ type
     bfsBlockEnd,
     bfsMemSet,
     bfsMul,
+    bfsMemAdd
     bfsNoOp
 
   BFSymbol* = object of RootObj
     case kind*: BFSymbolKind
-    of bfsApAdjust, bfsMemAdjust, bfsMul, bfsMemSet:
+    of bfsApAdjust, bfsMemAdjust, bfsMul, bfsMemSet, bfsMemAdd:
       amt*: int
       offset*: int
-      mulOffs*: int
+      secondOffset*: int
     of bfsBlock:
       statements*: seq[BFSymbol]
     else: discard
@@ -47,5 +48,6 @@ proc symbolToOpCode*(s: BFSymbol): string =
     of bfsBlock: "bs"
     of bfsBlockEnd: "be"
     of bfsMemSet: &"ms {s.offset}, {s.amt}"
-    of bfsMul: &"mul {s.offset}, {s.mulOffs}, {s.amt}"
+    of bfsMul: &"mul {s.offset}, {s.secondOffset}, {s.amt}"
+    of bfsMemAdd: &"madd {s.offset}, {s.secondOffset}"
     of bfsNoOp: "noop"

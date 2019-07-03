@@ -41,7 +41,6 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
       bf.memory[bf.ap + symbols[bf.pc].offset] += symbols[bf.pc].amt
     of bfsPrint:
       stdout.write bf.memory[bf.ap].char
-      stdout.flushFile()
     of bfsRead:
       discard stdin.readChars(tempMem, 0, 1)
       bf.memory[bf.ap] = tempMem[0].int
@@ -54,10 +53,14 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
     of bfsMemSet:
       bf.memory[bf.ap + symbols[bf.pc].offset] = symbols[bf.pc].amt
     of bfsMul:
-      bf.memory[bf.ap + symbols[bf.pc].offset] += bf.memory[bf.ap] * symbols[bf.pc].amt
+      bf.memory[bf.ap + symbols[bf.pc].offset] += bf.memory[bf.ap + symbols[bf.pc].secondOffset] * symbols[bf.pc].amt
+    of bfsMemAdd:
+      bf.memory[bf.ap + symbols[bf.pc].offset] += bf.memory[bf.ap + symbols[bf.pc].secondOffset]
     of bfsNoOp: discard
     inc bf.pc
-    
+
+  stdout.flushFile()
+
 when isMainModule:
   var c = BFCore()
   c.interpret(readFile("helloworld.bf"))

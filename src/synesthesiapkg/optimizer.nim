@@ -63,7 +63,7 @@ proc generateDeferredMovements*(symbols: seq[BFSymbol]): seq[BFSymbol] =
       result &= BFSymbol(kind: bfsMul,
                          amt: symbols[i].amt,
                          offset: symbols[i].offset + totalOffset,
-                         mulOffs: totalOffset)
+                         secondOffset: totalOffset)
     elif symbols[i].kind == bfsApAdjust:
       totalOffset += symbols[i].amt
     else:
@@ -162,6 +162,22 @@ proc combineMemSets*(symbols: seq[BFSymbol]): seq[BFSymbol] =
       result &= symbols[i]
       i += 1
 
+## If a multiplication has a zero mulOffset and a 1 amount, we can perform a memAdd
+proc simplifyMultiplications*(symbols: seq[BFSymbol]): seq[BFSymbol] =
+  echo "Converting mul * 1 to an add"
+  result = @[]
+  var i = 0
+  while i < symbols.len:
+    if (symbols[i].kind == bfsMul and
+        symbols[i].amt == 1):
+      result &= BFSymbol(kind: bfsMemAdd,
+                         offset: symbols[i].offset,
+                         secondOffset: symbols[i].secondOffset)
+    else:
+      result &= symbols[i]
+    inc i
+
+
 proc applyAllOptimizations*(symbols: seq[BFSymbol]): seq[BFSymbol] =
   result = (symbols
             .coalesceAdjustments
@@ -170,4 +186,5 @@ proc applyAllOptimizations*(symbols: seq[BFSymbol]): seq[BFSymbol] =
             .generateDeferredMovements
             .removeDeadAdjustments
             .combineMemSets
+            .simplifyMultiplications
   )
