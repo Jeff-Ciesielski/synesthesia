@@ -111,8 +111,8 @@ proc genMemSet(offset, amt: int): NimNode =
   )
 
 ## Generates a multiplication instruction
-## core.memory[core.ap + <x>] += core.memory[core.ap] * <y>
-proc genMul(x, y: int): NimNode =
+## core.memory[core.ap + <x>] += core.memory[core.ap - y] * <z>
+proc genMul(x, y, z: int): NimNode =
   nnkStmtList.newTree(
     nnkInfix.newTree(
       newIdentNode("+="),
@@ -137,12 +137,16 @@ proc genMul(x, y: int): NimNode =
             newIdentNode("core"),
             newIdentNode("memory")
           ),
-          nnkDotExpr.newTree(
-            newIdentNode("core"),
-            newIdentNode("ap")
+          nnkInfix.newTree(
+            newIdentNode("+"),
+            nnkDotExpr.newTree(
+              newIdentNode("core"),
+              newIdentNode("ap")
+            ),
+            newIntLitNode(y)
           )
         ),
-        newIntLitNode(y)
+        newIntLitNode(z)
       )
     )
   )
@@ -257,7 +261,7 @@ macro compile*(fileName: string): untyped =
     of bfsMemSet:
       blockstack[^1] <- genMemSet(sym.offset, sym.amt)
     of bfsMul:
-      blockstack[^1] <- genMul(sym.offset, sym.amt)
+      blockstack[^1] <- genMul(sym.offset, sym.mulOffs, sym.amt)
     of bfsNoOp: discard
     else: discard
 
