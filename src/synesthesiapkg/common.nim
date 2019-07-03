@@ -1,3 +1,5 @@
+import strformat
+
 type
   BFCore* = ref object
    memory*: array[1024, int]
@@ -19,6 +21,7 @@ type
     of bfsApAdjust, bfsMemAdjust, bfsMul, bfsMemSet:
       amt*: int
       offset*: int
+      mulOffs*: int
     of bfsBlock:
       statements*: seq[BFSymbol]
     else: discard
@@ -34,3 +37,15 @@ proc charToSymbol*(c: char): BFSymbol =
   of '[': BFSymbol(kind: bfsBlock, statements: @[])
   of ']': BFSymbol(kind: bfsBlockEnd)
   else:   BFSymbol(kind: bfsNoOp)
+
+proc symbolToOpCode*(s: BFSymbol): string =
+  case s.kind
+    of bfsApAdjust: &"pa {s.amt}"
+    of bfsMemAdjust: &"ma {s.offset}, {s.amt}"
+    of bfsPrint: "p"
+    of bfsRead: "r"
+    of bfsBlock: "bs"
+    of bfsBlockEnd: "be"
+    of bfsMemSet: &"ms {s.offset}, {s.amt}"
+    of bfsMul: &"mul {s.offset}, {s.mulOffs}, {s.amt}"
+    of bfsNoOp: "noop"

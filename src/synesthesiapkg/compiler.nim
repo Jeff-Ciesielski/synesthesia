@@ -235,7 +235,9 @@ macro compile*(fileName: string): untyped =
 
   echo &"Reduced instruction count by {100.0 - (optimized.len/symbols.len)*100}% {symbols.len} => {optimized.len}"
   echo "generating nim AST"
+  var opcodes = ""
   for sym in optimized:
+    opcodes &= &"{sym.symbolToOpCode()}\n"
     case sym.kind
     of bfsApAdjust:
       blockStack[^1] <- genApAdjust(sym.amt)
@@ -260,6 +262,7 @@ macro compile*(fileName: string): untyped =
     else: discard
 
   result = newStmtList().add(blockStack[0])
+  writeFile("opcodes.bfv", opcodes)
 
 # Example output:
 # +[>+[.]]
