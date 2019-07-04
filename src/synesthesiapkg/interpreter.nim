@@ -7,15 +7,15 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
   var
     jumpTbl = initTable[int, int]()
     jumpStk: seq[int] = @[]
-    symbols = if optimize:
-                (map(program, proc(x: char): BFSymbol = charToSymbol(x))
+    tokens = if optimize:
+                (map(program, proc(x: char): BFToken = charToToken(x))
                 .applyAllOptimizations)
               else:
-                map(program, proc(x: char): BFSymbol = charToSymbol(x))    
+                map(program, proc(x: char): BFToken = charToToken(x))
     tempMem: array[1, char]
 
   # Before we start, pre-compute a jump table
-  for pc, sym in symbols:
+  for pc, sym in tokens:
     case sym.kind
     of bfsBlock:
       jumpStk &= pc
@@ -33,12 +33,12 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
     cell = 0
 
   # Do the business
-  while bf.pc <= symbols.high:
-    case symbols[bf.pc].kind
+  while bf.pc <= tokens.high:
+    case tokens[bf.pc].kind
     of bfsApAdjust:
-      bf.ap += symbols[bf.pc].amt
+      bf.ap += tokens[bf.pc].amt
     of bfsMemAdjust:
-      bf.memory[bf.ap + symbols[bf.pc].offset] += symbols[bf.pc].amt
+      bf.memory[bf.ap + tokens[bf.pc].offset] += tokens[bf.pc].amt
     of bfsPrint:
       stdout.write bf.memory[bf.ap].char
     of bfsRead:
@@ -51,11 +51,11 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
       if bf.memory[bf.ap] != 0:
         bf.pc = jumpTbl[bf.pc]
     of bfsMemSet:
-      bf.memory[bf.ap + symbols[bf.pc].offset] = symbols[bf.pc].amt
+      bf.memory[bf.ap + tokens[bf.pc].offset] = tokens[bf.pc].amt
     of bfsMul:
-      bf.memory[bf.ap + symbols[bf.pc].offset] += bf.memory[bf.ap + symbols[bf.pc].secondOffset] * symbols[bf.pc].amt
+      bf.memory[bf.ap + tokens[bf.pc].offset] += bf.memory[bf.ap + tokens[bf.pc].secondOffset] * tokens[bf.pc].amt
     of bfsMemAdd:
-      bf.memory[bf.ap + symbols[bf.pc].offset] += bf.memory[bf.ap + symbols[bf.pc].secondOffset]
+      bf.memory[bf.ap + tokens[bf.pc].offset] += bf.memory[bf.ap + tokens[bf.pc].secondOffset]
     of bfsNoOp: discard
     inc bf.pc
 
