@@ -6,6 +6,7 @@ description   = "A brainfuck compiler + Interpreter"
 license       = "MIT"
 srcDir        = "src"
 bin           = @["synesthesia"]
+installExt    = @["nim"]
 
 # Dependencies
 
