@@ -46,6 +46,6 @@ when isMainModule:
 
   if args["--compile"]:
     "temp_file.nim".writeFile(expandedTemplate)
-    let compileResult = execCmd(&"nim c --opt=size -d:release -o:{outFile} temp_file.nim")
+    let compileResult = execCmd(&"nim c -x:off --opt=size -d:release -o:{outFile} temp_file.nim")
     removeFile("temp_file.nim")
     quit compileResult
