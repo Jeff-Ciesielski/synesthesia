@@ -2,8 +2,6 @@
 import macros
 import sequtils
 import strformat
-import tables
-import random
 
 import common
 import optimizer
@@ -303,7 +301,6 @@ macro compile*(fileName: string): untyped =
     of bfsMemAdd:
       blockstack[^1] <- genMemAdd(sym.offset, sym.secondOffset)
     of bfsNoOp: discard
-    else: discard
 
   result = newStmtList().add(blockStack[0])
   writeFile("opcodes.bfv", opcodes)
