@@ -58,7 +58,7 @@ proc genInitialBlock(apOffset: int): NimNode =
             newIdentNode("BFCore"),
             nnkExprColonExpr.newTree(
               newIdentNode("ap"),
-              newIdentNode("InitialOffset")
+              newIntLitNode(apOffset)
             )
           )
         )
