@@ -2,6 +2,7 @@ import common
 import tables
 import sequtils
 import optimizer
+import strformat
 
 proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
   var
@@ -13,10 +14,14 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
               else:
                 map(program, proc(x: char): BFToken = charToToken(x))
     tempMem: array[1, char]
+    minOffset = 0
 
-  # Before we start, pre-compute a jump table
+  # Before we start, pre-compute a jump table and the initial offset
   for pc, sym in tokens:
     case sym.kind
+    of bfsApAdjust, bfsMemAdjust, bfsMul, bfsMemSet, bfsMemAdd:
+      minOffset = min(minOffset, sym.offset)
+      minOffset = min(minOffset, sym.secondOffset)
     of bfsBlock:
       jumpStk &= pc
     of bfsBlockEnd:
@@ -28,12 +33,13 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
 
   # Clear out our core state
   bf.pc = 0
-  bf.ap = 0
+  bf.ap = abs(minOffset) + 1
   for cell in bf.memory.mitems:
     cell = 0
 
   # Do the business
   while bf.pc <= tokens.high:
+    # TODO: Implement some sort of trace or step-through debugger?
     case tokens[bf.pc].kind
     of bfsApAdjust:
       bf.ap += tokens[bf.pc].amt

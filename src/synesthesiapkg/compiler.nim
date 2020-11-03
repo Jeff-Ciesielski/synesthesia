@@ -46,7 +46,7 @@ proc `<-`(a, b: NimNode) =
     echo "wtf"
 
 ## Generates a lexical block that all other code will live inside
-proc genInitialBlock(): NimNode =
+proc genInitialBlock(apOffset: int): NimNode =
   nnkBlockStmt.newTree(
     newIdentNode("bfProg"),
     nnkStmtList.newTree(
@@ -54,8 +54,12 @@ proc genInitialBlock(): NimNode =
         nnkIdentDefs.newTree(
           newIdentNode("core"),
           newEmptyNode(),
-          nnkCall.newTree(
-            newIdentNode("BFCore")
+          nnkObjConstr.newTree(
+            newIdentNode("BFCore"),
+            nnkExprColonExpr.newTree(
+              newIdentNode("ap"),
+              newIdentNode("InitialOffset")
+            )
           )
         )
       )
@@ -264,16 +268,29 @@ proc genRead(): NimNode =
   )
 
 macro compile*(fileName: string): untyped =
-  var
-    blockStack = @[genInitialBlock()]
-    blockCount: int = 1
   let
     program = slurp(fileName.strVal)
     instructions = toSeq(program.items)
     tokens = map(instructions, proc(x: char): BFToken = charToToken(x))
     optimized = tokens.applyAllOptimizations()
 
+  # TODO: Roll this into the optimization pass?
+  # find the lowest offset and offset our initial AP by at least that much
+  var minOffset: int = 0
+  for sym in optimized:
+    case sym.kind
+    of bfsApAdjust, bfsMemAdjust, bfsMul, bfsMemSet, bfsMemAdd:
+      minOffset = min(minOffset, sym.offset)
+      minOffset = min(minOffset, sym.secondOffset)
+    else: discard
+
+
   echo &"Reduced instruction count by {100.0 - (optimized.len/tokens.len)*100}% {tokens.len} => {optimized.len}"
+  echo &"Adjusting initial ap by {abs(minOffset)+1} to account for negative indices"
+  var
+    blockStack = @[genInitialBlock(abs(minOffset) + 1)]
+    blockCount: int = 1
+
   echo "generating nim AST"
   var opcodes = ""
   for sym in optimized:
@@ -311,7 +328,7 @@ macro compile*(fileName: string): untyped =
 #dumpTree:
 #  block bfProg:
 #    var
-#      core = BFCore()
+#      core = BFCore(ap:InitialOffset)
 #      register: int
 #    inc core.memory[core.ap]
 #    loopBlock(b1, core.memory[core.ap]):

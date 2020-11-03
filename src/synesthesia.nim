@@ -13,13 +13,14 @@ let doc = """Brainfuck Compiler/Interpreter
 (C) 2019 Jeff Ciesielski <jeffciesielski@gmail.com>
 
 Usage:
-  synesthesia (--interpret | --compile) [--output=OUTFILE] INPUT
+  synesthesia (--interpret | --compile) [--check_bounds] [--output=OUTFILE] INPUT
 
 Options:
   -h --help               Show this help message and exit.
   -i --interpret          Interpret the supplied BF file.
   -c --compile            Compile the supplied BF file.
   -o --output OUTFILE     Specify the output file [default: a.out]
+  -b --check_bounds       Enable bounds checking for arrays (for debugging)
 """
 
 let bfTemplate = """
@@ -46,6 +47,11 @@ when isMainModule:
 
   if args["--compile"]:
     "temp_file.nim".writeFile(expandedTemplate)
-    let compileResult = execCmd(&"nim c -x:off --opt=size -d:release -o:{outFile} temp_file.nim")
+    let
+      boundCheck = if args["--check_bounds"]:
+                     "on"
+                   else:
+                     "off"
+      compileResult = execCmd(&"nim c --gc:stack -x:{boundCheck} --opt=size -d:release -o:{outFile} temp_file.nim")
     removeFile("temp_file.nim")
     quit compileResult
