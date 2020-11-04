@@ -108,7 +108,10 @@ proc genMemSet(offset, amt: int): NimNode =
           newIntLitNode(offset)
         )
       ),
-      newIntLitNode(amt)
+      nnkCast.newTree(
+        newIdentNode("uint8"),
+        newIntLitNode(amt),
+      )
     )
   )
 
@@ -148,7 +151,10 @@ proc genMul(x, y, z: int): NimNode =
             newIntLitNode(y)
           )
         ),
-        newIntLitNode(z)
+        nnkCast.newTree(
+          newIdentNode("uint8"),
+          newIntLitNode(z),
+        )
       )
     )
   )
@@ -207,24 +213,27 @@ proc genApAdjust(amount: int): NimNode =
 ## core.memory[core.ap + <offset>] += <amount>
 proc genMemAdjust(amount: int, offset: int): NimNode =
   nnkStmtList.newTree(
-    nnkInfix.newTree(
-      newIdentNode("+="),
-      nnkBracketExpr.newTree(
-        nnkDotExpr.newTree(
-          newIdentNode("core"),
-          newIdentNode("memory")
-        ),
-        nnkInfix.newTree(
-          newIdentNode("+"),
-          nnkDotExpr.newTree(
-            newIdentNode("core"),
-            newIdentNode("ap")
-          ),
-          newLit(offset)
-        )
-      ),
-      newLit(amount)
-    )
+   nnkInfix.newTree(
+     newIdentNode("+="),
+     nnkBracketExpr.newTree(
+       nnkDotExpr.newTree(
+         newIdentNode("core"),
+         newIdentNode("memory")
+       ),
+       nnkInfix.newTree(
+         newIdentNode("+"),
+         nnkDotExpr.newTree(
+           newIdentNode("core"),
+           newIdentNode("ap")
+         ),
+         newLit(offset)
+       )
+     ),
+     nnkCast.newTree(
+       newIdentNode("uint8"),
+       newLit(amount),
+     )
+   )
   )
 
 ## Generates a new loop block

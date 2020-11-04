@@ -44,12 +44,12 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
     of bfsApAdjust:
       bf.ap += tokens[bf.pc].amt
     of bfsMemAdjust:
-      bf.memory[bf.ap + tokens[bf.pc].offset] += tokens[bf.pc].amt
+      bf.memory[bf.ap + tokens[bf.pc].offset] += tokens[bf.pc].amt.uint8
     of bfsPrint:
       stdout.write bf.memory[bf.ap].char
     of bfsRead:
       discard stdin.readChars(tempMem, 0, 1)
-      bf.memory[bf.ap] = tempMem[0].int
+      bf.memory[bf.ap] = tempMem[0].uint8
     of bfsBlock:
       if bf.memory[bf.ap] == 0:
         bf.pc = jumpTbl[bf.pc]
@@ -57,9 +57,9 @@ proc interpret*(bf: BFCore, program: string, optimize:bool=false) =
       if bf.memory[bf.ap] != 0:
         bf.pc = jumpTbl[bf.pc]
     of bfsMemSet:
-      bf.memory[bf.ap + tokens[bf.pc].offset] = tokens[bf.pc].amt
+      bf.memory[bf.ap + tokens[bf.pc].offset] = tokens[bf.pc].amt.uint8
     of bfsMul:
-      bf.memory[bf.ap + tokens[bf.pc].offset] += bf.memory[bf.ap + tokens[bf.pc].secondOffset] * tokens[bf.pc].amt
+      bf.memory[bf.ap + tokens[bf.pc].offset] += bf.memory[bf.ap + tokens[bf.pc].secondOffset] * tokens[bf.pc].amt.uint8
     of bfsMemAdd:
       bf.memory[bf.ap + tokens[bf.pc].offset] += bf.memory[bf.ap + tokens[bf.pc].secondOffset]
     of bfsNoOp: discard

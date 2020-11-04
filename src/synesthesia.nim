@@ -52,6 +52,6 @@ when isMainModule:
                      "on"
                    else:
                      "off"
-      compileResult = execCmd(&"nim c --gc:stack -x:{boundCheck} --opt=size -d:release -o:{outFile} temp_file.nim")
+      compileResult = execCmd(&"nim c --gc:stack -x:{boundCheck} -a:off --opt=size -d:release -o:{outFile} temp_file.nim")
     removeFile("temp_file.nim")
     quit compileResult
