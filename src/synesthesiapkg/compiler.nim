@@ -47,24 +47,11 @@ proc `<-`(a, b: NimNode) =
 
 ## Generates a lexical block that all other code will live inside
 proc genInitialBlock(apOffset: int): NimNode =
-  nnkBlockStmt.newTree(
-    newIdentNode("bfProg"),
-    nnkStmtList.newTree(
-      nnkVarSection.newTree(
-        nnkIdentDefs.newTree(
-          newIdentNode("core"),
-          newEmptyNode(),
-          nnkObjConstr.newTree(
-            newIdentNode("BFCore"),
-            nnkExprColonExpr.newTree(
-              newIdentNode("ap"),
-              newIntLitNode(apOffset)
-            )
-          )
-        )
-      )
-    )
-  )
+  let
+    core = newIdentNode("core")
+  quote do:
+      block bfProg:
+        var `core`= BFCore(ap:`apOffset`)
 
 ## Generates a print instruction
 ## stdout.write(core.memory[core.ap].char)
@@ -106,20 +93,11 @@ proc genMemAdjust(amount: int, offset: int): NimNode =
 ## loopBlock(core.memory[core.ap]):
 ##   <statements>
 proc genBlock(id: int): NimNode =
-  nnkCall.newTree(
-    newIdentNode("loopBlock"),
-    nnkBracketExpr.newTree(
-      nnkDotExpr.newTree(
-        newIdentNode("core"),
-        newIdentNode("memory")
-      ),
-      nnkDotExpr.newTree(
-        newIdentNode("core"),
-        newIdentNode("ap")
-      )
-    ),
-    newStmtList()
-  )
+  let statements = newStmtList()
+
+  quote do:
+    loopBlock(core.memory[core.ap]):
+      `statements`
 
 ## Generates a read instruction
 ## core.memory[core.ap] = readCharacter()
@@ -181,20 +159,3 @@ macro compile*(fileName: string): untyped =
 
   result = newStmtList().add(blockStack[0])
   writeFile("opcodes.bfv", opcodes)
-
-# Example output:
-# +[>+[.]]
-#dumpAstGen:
-#dumpTree:
-#  block bfProg:
-#    var
-#      core = BFCore(ap:InitialOffset)
-#      register: int
-#    inc core.memory[core.ap]
-#    loopBlock(b1, core.memory[core.ap]):
-#      core.ap += 1
-#      register = 1
-#      core.memory[core.ap] += register.uint8
-#      loopBlock(b2, core.memory[core.ap]):
-#        stdout.write core.memory[core.ap].char
-#        stdout.flushFile()
