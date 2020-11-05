@@ -69,172 +69,38 @@ proc genInitialBlock(apOffset: int): NimNode =
 ## Generates a print instruction
 ## stdout.write(core.memory[core.ap].char)
 proc genPrintMemory(): NimNode =
-  nnkCommand.newTree(
-    nnkDotExpr.newTree(
-      newIdentNode("stdout"),
-        newIdentNode("write")
-      ),
-      nnkDotExpr.newTree(
-        nnkBracketExpr.newTree(
-          nnkDotExpr.newTree(
-            newIdentNode("core"),
-            newIdentNode("memory")
-          ),
-          nnkDotExpr.newTree(
-            newIdentNode("core"),
-            newIdentNode("ap")
-          )
-        ),
-        newIdentNode("char")
-      )
-    )
+  quote do:
+    stdout.write(core.memory[core.ap].char)
 
 ## Generates a memSet instruction
 ## core.memory[core.ap + <offset>] = <amt>
 proc genMemSet(offset, amt: int): NimNode =
-  nnkStmtList.newTree(
-    nnkAsgn.newTree(
-      nnkBracketExpr.newTree(
-        nnkDotExpr.newTree(
-          newIdentNode("core"),
-          newIdentNode("memory")
-        ),
-        nnkInfix.newTree(
-          newIdentNode("+"),
-          nnkDotExpr.newTree(
-            newIdentNode("core"),
-            newIdentNode("ap")
-          ),
-          newIntLitNode(offset)
-        )
-      ),
-      nnkCast.newTree(
-        newIdentNode("uint8"),
-        newIntLitNode(amt),
-      )
-    )
-  )
+  quote do:
+    core.memory[core.ap + `offset`] = `amt`
 
 ## Generates a multiplication instruction
 ## core.memory[core.ap + <x>] += core.memory[core.ap + y] * <z>
 proc genMul(x, y, z: int): NimNode =
-  nnkStmtList.newTree(
-    nnkInfix.newTree(
-      newIdentNode("+="),
-      nnkBracketExpr.newTree(
-        nnkDotExpr.newTree(
-          newIdentNode("core"),
-          newIdentNode("memory")
-        ),
-        nnkInfix.newTree(
-          newIdentNode("+"),
-          nnkDotExpr.newTree(
-            newIdentNode("core"),
-            newIdentNode("ap")
-          ),
-          newIntLitNode(x)
-        )
-      ),
-      nnkInfix.newTree(
-        newIdentNode("*"),
-        nnkBracketExpr.newTree(
-          nnkDotExpr.newTree(
-            newIdentNode("core"),
-            newIdentNode("memory")
-          ),
-          nnkInfix.newTree(
-            newIdentNode("+"),
-            nnkDotExpr.newTree(
-              newIdentNode("core"),
-              newIdentNode("ap")
-            ),
-            newIntLitNode(y)
-          )
-        ),
-        nnkCast.newTree(
-          newIdentNode("uint8"),
-          newIntLitNode(z),
-        )
-      )
-    )
-  )
-
+  quote do:
+    core.memory[core.ap + `x`] += core.memory[core.ap + `y`] * cast[uint8](`z`)
 
 ## Generates a memory add instruction
 ## core.memory[core.ap + <x>] += core.memory[core.ap + y]
 proc genMemAdd(x, y: int): NimNode =
-   nnkStmtList.newTree(
-    nnkInfix.newTree(
-      newIdentNode("+="),
-      nnkBracketExpr.newTree(
-        nnkDotExpr.newTree(
-          newIdentNode("core"),
-          newIdentNode("memory")
-        ),
-        nnkInfix.newTree(
-          newIdentNode("+"),
-          nnkDotExpr.newTree(
-            newIdentNode("core"),
-            newIdentNode("ap")
-          ),
-          newIntLitNode(x)
-        )
-      ),
-      nnkBracketExpr.newTree(
-        nnkDotExpr.newTree(
-          newIdentNode("core"),
-          newIdentNode("memory")
-        ),
-        nnkInfix.newTree(
-          newIdentNode("+"),
-          nnkDotExpr.newTree(
-            newIdentNode("core"),
-            newIdentNode("ap")
-          ),
-          newIntLitNode(y)
-        )
-      )
-    )
-   )
+  quote do:
+    core.memory[core.ap + `x`] += core.memory[core.ap + `y`]
 
 ## Generates an AP adjust
 ## core.ap += <amount>
 proc genApAdjust(amount: int): NimNode =
-  nnkInfix.newTree(
-    newIdentNode("+="),
-    nnkDotExpr.newTree(
-      newIdentNode("core"),
-      newIdentNode("ap")
-    ),
-    newLit(amount)
-  )
+  quote do:
+    core.ap += `amount`
 
 ## Generates a memory adjust
 ## core.memory[core.ap + <offset>] += <amount>
 proc genMemAdjust(amount: int, offset: int): NimNode =
-  nnkStmtList.newTree(
-   nnkInfix.newTree(
-     newIdentNode("+="),
-     nnkBracketExpr.newTree(
-       nnkDotExpr.newTree(
-         newIdentNode("core"),
-         newIdentNode("memory")
-       ),
-       nnkInfix.newTree(
-         newIdentNode("+"),
-         nnkDotExpr.newTree(
-           newIdentNode("core"),
-           newIdentNode("ap")
-         ),
-         newLit(offset)
-       )
-     ),
-     nnkCast.newTree(
-       newIdentNode("uint8"),
-       newLit(amount),
-     )
-   )
-  )
+  quote do:
+    core.memory[core.ap + `offset`] += cast[uint8](`amount`)
 
 ## Generates a new loop block
 ## loopBlock(core.memory[core.ap]):
@@ -258,23 +124,8 @@ proc genBlock(id: int): NimNode =
 ## Generates a read instruction
 ## core.memory[core.ap] = readCharacter()
 proc genRead(): NimNode =
-  nnkStmtList.newTree(
-    nnkAsgn.newTree(
-      nnkBracketExpr.newTree(
-        nnkDotExpr.newTree(
-          newIdentNode("core"),
-          newIdentNode("memory")
-        ),
-        nnkDotExpr.newTree(
-          newIdentNode("core"),
-          newIdentNode("ap")
-        )
-      ),
-      nnkCall.newTree(
-        newIdentNode("readCharacter")
-      )
-    )
-  )
+  quote do:
+    core.memory[core.ap] = readCharacter()
 
 macro compile*(fileName: string): untyped =
   let
